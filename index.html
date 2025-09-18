@@ -4,39 +4,45 @@
 <meta charset="UTF-8">
 <title>Flash Card Memory Game</title>
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f8f9fa;
-  margin:0;padding:0;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-}
-h1 {margin:20px;color:#333;}
-.setup {margin:20px;}
-select,input,button {padding:10px;margin:5px;font-size:16px;}
-.board {display:grid;gap:10px;margin:20px;}
-.card {width:100px;height:120px;perspective:1000px;cursor:pointer;}
-.inner {width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform 0.5s;}
-.flipped .inner {transform:rotateY(180deg);}
-.front,.back {position:absolute;width:100%;height:100%;backface-visibility:hidden;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-.front {background:#007bff;}
-.back {background:#fff;transform:rotateY(180deg);font-size:40px;padding:5px;}
-.label {font-size:14px;margin-top:5px;color:#333;}
-.modal {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;}
-.modal-content {background:#fff;padding:20px;border-radius:8px;width:350px;text-align:center;}
-.stars {font-size:28px;color:gold;margin:10px 0;}
-table {width:100%;border-collapse:collapse;margin-top:10px;}
-th,td {border:1px solid #ccc;padding:5px;font-size:14px;}
-th {background:#f0f0f0;}
-canvas#fireworks {position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;}
+body { font-family: 'Comic Sans MS', cursive, sans-serif; background: #fffbf0; margin:0; padding:0; display:flex; flex-direction:column; align-items:center; }
+h1{margin:20px; color:#ff6f61; text-shadow: 2px 2px #ffd700;}
+.setup{margin:20px; text-align:center;}
+select, button{padding:10px; margin:5px; font-size:16px; border-radius:8px; border:none; cursor:pointer;}
+button{background: #ff6f61; color:#fff; font-weight:bold; transition:0.3s;}
+button:hover{background:#ff856e;}
+#soundToggle{position:fixed; top:10px; right:10px; font-size:28px; cursor:pointer;}
+.board{display:grid; gap:10px; margin:20px; justify-content:center;}
+.card{width:100px; height:100px; perspective:1000px; cursor:pointer; border-radius:12px;}
+.inner{width:100%; height:100%; position:relative; transform-style:preserve-3d; transition:transform 0.5s;}
+.flipped .inner{transform:rotateY(180deg);}
+.front, .back{position:absolute; width:100%; height:100%; backface-visibility:hidden; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; box-shadow: 0 4px 6px rgba(0,0,0,0.2);}
+.front{background: #00bfff; color:white; font-size:32px; font-weight:bold;}
+.back{background: #fff; transform:rotateY(180deg); font-size:36px; color:#333;}
+.label{font-size:14px; margin-top:5px; text-align:center;}
+#stats{margin-top:10px; font-weight:bold; font-size:18px; color:#333;}
+.modal{display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:10;}
+.modal-content{background:#fff; padding:20px; border-radius:12px; width:300px; text-align:center; animation: popIn 0.5s;}
+@keyframes popIn{0%{transform:scale(0.5);}100%{transform:scale(1);}}
+.stars{font-size:32px; color:gold; margin:10px 0;}
+canvas{position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5;}
+#loadingModal .modal-content{background:#ffebc6; color:#ff6f61; font-size:24px;}
+@media(max-width:600px){.card{width:70px; height:70px;} .back{font-size:24px;} .label{font-size:12px;} #stats{font-size:14px;}}
 </style>
 </head>
 <body>
+
 <h1>Flash Card Memory Game</h1>
+<div id="soundToggle" onclick="toggleSound()">🔊</div>
+
+<!-- Loading Modal -->
+<div class="modal" id="loadingModal" style="display:flex;">
+  <div class="modal-content">
+    <h2>Loading...</h2>
+    <p>Please wait while the game loads!</p>
+  </div>
+</div>
 
 <div class="setup">
-<input id="playerName" placeholder="Enter name" />
 <label>Category:</label>
 <select id="category"></select>
 <label>Grid Size:</label>
@@ -47,157 +53,155 @@ canvas#fireworks {position:fixed;top:0;left:0;width:100%;height:100%;pointer-eve
 <option value="5">5x5</option>
 <option value="6">6x6</option>
 </select>
-<button onclick="startGame()">Start Game</button>
+<br>
+<button id="startBtn" onclick="startGame()">Start Game</button>
+<button onclick="resetGame()">Reset</button>
 </div>
 
 <div id="stats"></div>
 <div class="board" id="board"></div>
 
-<canvas id="fireworks"></canvas>
-
+<!-- Result Modal -->
 <div class="modal" id="resultModal">
 <div class="modal-content">
-<h2>Report Card</h2>
+<h2>🎉 Report Card 🎉</h2>
 <p id="finalStats"></p>
 <div class="stars" id="stars"></div>
-<h3>Leaderboard</h3>
-<table id="leaderboard">
-<thead><tr><th>Name</th><th>Stars</th><th>Moves</th><th>Time(s)</th></tr></thead>
-<tbody></tbody>
-</table>
 <button onclick="playAgain()">Play Again</button>
-<button onclick="resetGame()">Reset</button>
 </div>
 </div>
 
-<audio id="flipSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
-<audio id="matchSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
-<audio id="wrongSound" src="https://actions.google.com/sounds/v1/cartoon/slide_whistle.ogg"></audio>
-<audio id="victorySound" src="https://actions.google.com/sounds/v1/cartoon/ta_da.ogg"></audio>
+<canvas id="fireworks"></canvas>
+
+<!-- Sounds -->
+<audio id="flipSound" src="https://freesound.org/data/previews/146/146725_2437358-lq.mp3"></audio>
+<audio id="matchSound" src="https://freesound.org/data/previews/108/108566_861714-lq.mp3"></audio>
+<audio id="wrongSound" src="https://freesound.org/data/previews/109/109662_804504-lq.mp3"></audio>
+<audio id="victorySound" src="https://freesound.org/data/previews/331/331912_3248244-lq.mp3"></audio>
 
 <script>
-const categories = {
-Animals:[{icon:"🐶",name:"Dog"},{icon:"🐱",name:"Cat"},{icon:"🦁",name:"Lion"},{icon:"🐯",name:"Tiger"},{icon:"🐸",name:"Frog"},{icon:"🐵",name:"Monkey"},{icon:"🐰",name:"Rabbit"},{icon:"🦊",name:"Fox"},{icon:"🐻",name:"Bear"},{icon:"🐼",name:"Panda"},{icon:"🐮",name:"Cow"},{icon:"🐷",name:"Pig"},{icon:"🐦",name:"Bird"},{icon:"🐤",name:"Chick"},{icon:"🦆",name:"Duck"},{icon:"🐧",name:"Penguin"},{icon:"🐴",name:"Horse"},{icon:"🐭",name:"Mouse"},{icon:"🐹",name:"Hamster"},{icon:"🐔",name:"Chicken"}],
-Fruits:[{icon:"🍎",name:"Apple"},{icon:"🍌",name:"Banana"},{icon:"🍇",name:"Grapes"},{icon:"🍉",name:"Watermelon"},{icon:"🍒",name:"Cherry"},{icon:"🍍",name:"Pineapple"},{icon:"🥭",name:"Mango"},{icon:"🍓",name:"Strawberry"},{icon:"🍑",name:"Peach"},{icon:"🍋",name:"Lemon"},{icon:"🍊",name:"Orange"},{icon:"🥥",name:"Coconut"},{icon:"🥝",name:"Kiwi"},{icon:"🍐",name:"Pear"},{icon:"🥕",name:"Carrot"},{icon:"🍅",name:"Tomato"},{icon:"🍆",name:"Eggplant"},{icon:"🌽",name:"Corn"},{icon:"🥔",name:"Potato"},{icon:"🥒",name:"Cucumber"}]
+// Categories: Emoji + Name
+const categories={
+Animals:[{icon:"🐶",name:"Dog"},{icon:"🐱",name:"Cat"},{icon:"🦁",name:"Lion"},{icon:"🐻",name:"Bear"},{icon:"🐼",name:"Panda"},{icon:"🐨",name:"Koala"},{icon:"🐯",name:"Tiger"},{icon:"🐸",name:"Frog"},{icon:"🐵",name:"Monkey"},{icon:"🐔",name:"Chicken"},{icon:"🦆",name:"Duck"},{icon:"🐧",name:"Penguin"},{icon:"🐦",name:"Bird"},{icon:"🐤",name:"Chick"},{icon:"🐰",name:"Rabbit"},{icon:"🦊",name:"Fox"},{icon:"🐹",name:"Hamster"},{icon:"🐭",name:"Mouse"},{icon:"🐷",name:"Pig"},{icon:"🐮",name:"Cow"}],
+Fruits:[{icon:"🍎",name:"Apple"},{icon:"🍌",name:"Banana"},{icon:"🍇",name:"Grapes"},{icon:"🍓",name:"Strawberry"},{icon:"🍉",name:"Watermelon"},{icon:"🍍",name:"Pineapple"},{icon:"🥭",name:"Mango"},{icon:"🍑",name:"Peach"},{icon:"🍒",name:"Cherry"},{icon:"🥝",name:"Kiwi"},{icon:"🍋",name:"Lemon"},{icon:"🍐",name:"Pear"},{icon:"🫐",name:"Blueberry"},{icon:"🍊",name:"Orange"},{icon:"🍆",name:"Eggplant"},{icon:"🌽",name:"Corn"},{icon:"🥔",name:"Potato"},{icon:"🥕",name:"Carrot"},{icon:"🍅",name:"Tomato"},{icon:"🥥",name:"Coconut"}],
+ComputerParts:[{icon:"💻",name:"Laptop"},{icon:"🖥️",name:"Monitor"},{icon:"⌨️",name:"Keyboard"},{icon:"🖱️",name:"Mouse"},{icon:"💾",name:"Floppy"},{icon:"💿",name:"CD/DVD"},{icon:"🧮",name:"HDD"},{icon:"💽",name:"SSD"},{icon:"🔌",name:"USB Cable"},{icon:"📀",name:"Pendrive"},{icon:"🖨️",name:"Printer"},{icon:"🎛️",name:"CPU"},{icon:"🧩",name:"RAM"},{icon:"🖧",name:"Router"},{icon:"📡",name:"Wi-Fi Adapter"},{icon:"🎚️",name:"Motherboard"},{icon:"🛠️",name:"Power Supply"},{icon:"🎮",name:"Controller"},{icon:"📷",name:"Webcam"},{icon:"🔊",name:"Speakers"}]
 };
 
-const categorySelect = document.getElementById("category");
-const gridSelect = document.getElementById("gridSize");
-const board = document.getElementById("board");
-const statsDiv = document.getElementById("stats");
-const modal = document.getElementById("resultModal");
-const finalStats = document.getElementById("finalStats");
-const starsDiv = document.getElementById("stars");
-const leaderboardBody = document.querySelector("#leaderboard tbody");
+const categorySelect=document.getElementById("category");
+const gridSelect=document.getElementById("gridSize");
+const board=document.getElementById("board");
+const statsDiv=document.getElementById("stats");
+const modal=document.getElementById("resultModal");
+const finalStats=document.getElementById("finalStats");
+const starsDiv=document.getElementById("stars");
+const fireworksCanvas=document.getElementById("fireworks");
+const ctx=fireworksCanvas.getContext("2d");
+
+let fireworks=[],moves=0,matches=0,firstCard=null,lockBoard=false,startTime,timer,soundOn=true,playerName="";
 const flipSound=document.getElementById("flipSound");
 const matchSound=document.getElementById("matchSound");
 const wrongSound=document.getElementById("wrongSound");
 const victorySound=document.getElementById("victorySound");
 
+// Populate categories
 for(let cat in categories){
-let opt=document.createElement("option");
-opt.value=cat;opt.textContent=cat;categorySelect.appendChild(opt);
+  let opt=document.createElement("option");
+  opt.value=cat;
+  opt.textContent=cat;
+  categorySelect.appendChild(opt);
 }
 
-let moves,matches,firstCard,lockBoard,startTime,timer;
-
-function startGame(){
-moves=0;matches=0;firstCard=null;lockBoard=false;clearInterval(timer);
-startTime=Date.now();timer=setInterval(updateStats,500);
-const size=parseInt(gridSelect.value);
-board.style.gridTemplateColumns=`repeat(${size},100px)`;board.innerHTML="";
-const chosenCat=categorySelect.value;
-let items=[...categories[chosenCat]];items=shuffle(items).slice(0,(size*size)/2);
-let cardData=shuffle([...items,...items]);
-cardData.forEach(data=>{
-const card=document.createElement("div");
-card.className="card";
-card.innerHTML=`<div class="inner"><div class="front"></div><div class="back">${data.icon}<div class="label">${data.name}</div></div></div>`;
-card.addEventListener("click",()=>flipCard(card,data));
-board.appendChild(card);
-});
-}
-
-function flipCard(card,data){
-if(lockBoard||card.classList.contains("flipped")) return;
-card.classList.add("flipped");flipSound.play();
-if(!firstCard){firstCard={card,data};} else{
-moves++;
-if(data.icon===firstCard.data.icon){
-matches++;matchSound.play();firstCard=null;
-if(matches===(board.children.length/2)) setTimeout(endGame,500);
-}else{
-wrongSound.play();lockBoard=true;setTimeout(()=>{card.classList.remove("flipped");firstCard.card.classList.remove("flipped");firstCard=null;lockBoard=false;},1000);
-}}
-updateStats();
-}
-
-function updateStats(){
-const time=Math.floor((Date.now()-startTime)/1000);
-statsDiv.textContent=`Moves: ${moves} | Matches: ${matches} | Time: ${time}s`;
-}
-
-function endGame(){
-clearInterval(timer);
-const time=Math.floor((Date.now()-startTime)/1000);
-const size=parseInt(gridSelect.value);
-const idealMoves=size*size;
-const efficiency=idealMoves/moves;
-let starCount=1;
-if(efficiency>=0.9) starCount=5;
-else if(efficiency>=0.75) starCount=4;
-else if(efficiency>=0.6) starCount=3;
-else if(efficiency>=0.4) starCount=2;
-const player=document.getElementById("playerName").value||"Player";
-finalStats.textContent=`${player} - Moves: ${moves}, Time: ${time}s, Grid: ${size}x${size}`;
-starsDiv.textContent="★".repeat(starCount)+"☆".repeat(5-starCount);
-saveScore(player,starCount,moves,time);
-renderLeaderboard();
-victorySound.play();
-startFireworks();
-modal.style.display="flex";
-}
-
-function saveScore(name,stars,moves,time){
-let scores=JSON.parse(localStorage.getItem("leaderboard")||"[]");
-scores.push({name,stars,moves,time});
-scores.sort((a,b)=>b.stars-a.stars||a.time-b.time||a.moves-b.moves);
-scores=scores.slice(0,10);
-localStorage.setItem("leaderboard",JSON.stringify(scores));
-}
-
-function renderLeaderboard(){
-let scores=JSON.parse(localStorage.getItem("leaderboard")||"[]");
-leaderboardBody.innerHTML="";
-scores.forEach(s=>{let row=`<tr><td>${s.name}</td><td>${s.stars}</td><td>${s.moves}</td><td>${s.time}</td></tr>`;leaderboardBody.innerHTML+=row;});
-}
-
-function playAgain(){modal.style.display="none";startGame();}
-function resetGame(){modal.style.display="none";board.innerHTML="";statsDiv.textContent="";document.getElementById("playerName").value="";categorySelect.selectedIndex=0;gridSelect.selectedIndex=0;}
-
+// Shuffle
 function shuffle(arr){return arr.sort(()=>Math.random()-0.5);}
+function toggleSound(){soundOn=!soundOn;document.getElementById("soundToggle").textContent=soundOn?"🔊":"🔇";}
 
-// FIREWORKS
-const canvas=document.getElementById("fireworks");
-const ctx=canvas.getContext("2d");
-let fireworksArray=[];
-canvas.width=window.innerWidth;canvas.height=window.innerHeight;
-
-class Firework{
-constructor(){this.x=Math.random()*canvas.width;this.y=canvas.height;this.radius=2+Math.random()*2;this.color=`hsl(${Math.random()*360},100%,50%)`;this.vx=(Math.random()-0.5)*6;this.vy=Math.random()*-8-2;this.alpha=1;}
-update(){this.x+=this.vx;this.y+=this.vy;this.alpha-=0.02;}
-draw(){ctx.globalAlpha=this.alpha;ctx.beginPath();ctx.arc(this.x,this.y,this.radius,0,Math.PI*2);ctx.fillStyle=this.color;ctx.fill();ctx.globalAlpha=1;}
+// Start Game
+function startGame(){
+  playerName=prompt("Enter your name:","Player 1")||"Player 1";
+  document.getElementById("startBtn").disabled=true;
+  moves=0;matches=0;firstCard=null;lockBoard=false;
+  clearInterval(timer);startTime=Date.now();
+  timer=setInterval(updateStats,500);
+  
+  const size=parseInt(gridSelect.value);
+  board.style.gridTemplateColumns=`repeat(${size},1fr)`;
+  board.innerHTML="";
+  
+  const chosenCat=categorySelect.value;
+  let items=[...categories[chosenCat]];
+  items=shuffle(items).slice(0,Math.floor((size*size)/2));
+  let cards=shuffle([...items,...items]);
+  
+  cards.forEach(item=>{
+    const card=document.createElement("div");card.className="card";
+    card.innerHTML=`<div class="inner"><div class="front"></div><div class="back">${item.icon}<div class="label">${item.name}</div></div></div>`;
+    card.addEventListener("click",()=>flipCard(card,item));
+    board.appendChild(card);
+  });
 }
 
-function startFireworks(){
-fireworksArray=[];let count=0;
-const interval=setInterval(()=>{
-for(let i=0;i<5;i++){fireworksArray.push(new Firework());}
-ctx.clearRect(0,0,canvas.width,canvas.height);
-fireworksArray.forEach(fw=>{fw.update();fw.draw();});
-fireworksArray=fireworksArray.filter(fw=>fw.alpha>0);
-count++;if(count>40){clearInterval(interval);ctx.clearRect(0,0,canvas.width,canvas.height);}},50);
+// Flip logic
+function flipCard(card,item){
+  if(lockBoard||card.classList.contains("flipped")) return;
+  card.classList.add("flipped"); if(soundOn) flipSound.play();
+  if(!firstCard){firstCard={card,item};}else{
+    moves++;
+    if(item.icon===firstCard.item.icon){
+      matches++; if(soundOn) matchSound.play();
+      firstCard=null;
+      if(matches===board.children.length/2) endGame();
+    }else{
+      lockBoard=true; if(soundOn) wrongSound.play();
+      setTimeout(()=>{card.classList.remove("flipped");firstCard.card.classList.remove("flipped");firstCard=null;lockBoard=false;},1000);
+    }
+  }
 }
+
+// Stats
+function updateStats(){
+  const time=Math.floor((Date.now()-startTime)/1000);
+  statsDiv.textContent=`Player: ${playerName} | Moves: ${moves} | Matches: ${matches} | Time: ${time}s`;
+}
+
+// End game
+function endGame(){
+  clearInterval(timer);
+  const time=Math.floor((Date.now()-startTime)/1000);
+  const size=parseInt(gridSelect.value);
+  const idealMoves=size*size;
+  const efficiency=idealMoves/moves;
+  let starCount=1;
+  if(efficiency>=0.9) starCount=5;
+  else if(efficiency>=0.75) starCount=4;
+  else if(efficiency>=0.6) starCount=3;
+  else if(efficiency>=0.4) starCount=2;
+  
+  finalStats.textContent=`Player: ${playerName} | Moves: ${moves} | Time: ${time}s | Grid: ${size}x${size}`;
+  starsDiv.textContent="★".repeat(starCount)+"☆".repeat(5-starCount);
+  modal.style.display="flex";
+  if(soundOn) victorySound.play();
+  launchFireworks(); updateFireworks();
+}
+
+// Play again
+function playAgain(){modal.style.display="none";board.innerHTML="";document.getElementById("startBtn").disabled=false;fireworks=[];}
+
+// Reset game
+function resetGame(){board.innerHTML=""; statsDiv.textContent=""; document.getElementById("startBtn").disabled=false; fireworks=[]; modal.style.display="none";}
+
+// Fireworks
+function launchFireworks(){for(let i=0;i<50;i++){fireworks.push({x:Math.random()*fireworksCanvas.width,y:fireworksCanvas.height,dx:(Math.random()-0.5)*5,dy:-Math.random()*7-3,r:Math.random()*2+1,color:`hsl(${Math.random()*360},100%,50%)`,life:Math.random()*50+50});}}
+function updateFireworks(){ctx.clearRect(0,0,fireworksCanvas.width,fireworksCanvas.height); fireworks.forEach((f,i)=>{ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);ctx.fillStyle=f.color;ctx.fill(); f.x+=f.dx; f.y+=f.dy; f.dy+=0.1; f.life--; if(f.life<=0) fireworks.splice(i,1);}); if(fireworks.length>0) requestAnimationFrame(updateFireworks);}
+
+// Responsive canvas
+function resizeCanvas(){fireworksCanvas.width=window.innerWidth;fireworksCanvas.height=window.innerHeight;}
+window.addEventListener('resize',resizeCanvas);
+resizeCanvas();
+
+// Loading modal
+window.addEventListener('load',()=>{
+  setTimeout(()=>{document.getElementById('loadingModal').style.display='none';},500);
+});
 </script>
 </body>
 </html>
